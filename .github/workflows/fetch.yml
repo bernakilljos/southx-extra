@@ -8,7 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Grab
-      run: python fetch.py
+      run: pip install beautifulsoup4 && python fetch.py
     - name: commit
       run: |
         git config user.name x
