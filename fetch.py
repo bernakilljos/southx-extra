@@ -1,20 +1,14 @@
 import requests,os
 base='https://moderngov.southwark.gov.uk/'
-# fetch weekly meetings plus all linked docs recursively
-pages=['ieListDocuments.aspx?CId=172&MId=8402','ieListDocuments.aspx?CId=327&MId=8405','ieListDocuments.aspx?CId=519&MId=8249','ieListDocuments.aspx?CId=650&MId=8178','ieListDocuments.aspx?CId=172&MId=8403','ieListDocuments.aspx?CId=171&MId=8320']
-os.makedirs('data',exist_ok=True)
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin,urlparse
-for i,p in enumerate(pages):
- r=requests.get(urljoin(base,p));print(i,p,r.status_code,len(r.content),r.url)
- open(f'data/m{i}.html','wb').write(r.content)
- s=BeautifulSoup(r.text,'html.parser')
- # capture PDFs/doc links
- j=0
- for a in s.select('a[href]'):
-  href=a['href']; ful=urljoin(r.url,href)
-  if not any(x in href.lower() for x in ['.pdf','.doc','mgconvert2pdf','mgconvert2pdf','publicpack.pdf','publicpack agenda']):continue
-  try:r2=requests.get(ful,timeout=60);print('  link',j,href[:80],r2.status_code,len(r2.content),r2.url)
-  except Exception as e:print('  err',e);continue
-  ext='.pdf' if b'%PDF' in r2.content[:20] else '.html'
-  open(f'data/m{i}_{j}{ext}','wb').write(r2.content); j+=1
+s=requests.Session();
+r=s.get(base+'ieListDocuments.aspx?CId=519&MId=8249');print('cookie',s.cookies.get_dict())
+from urllib.parse import urljoin
+u=urljoin(base,'documents/s131118/Local%20Practice%20Menopause%20in%20Southwark.pdf')
+for i,kwargs in enumerate([
+ {}, {'headers':{'Referer':r.url}}, {'headers':{'Referer':r.url,'User-Agent':'Mozilla/5.0'}}, {'params':{'T':9}}, {'params':{'T':10}}, {'params':{'CT':2}}, {'params':{'T':0,'CT':2,'MID':8249}},
+]):
+ r2=s.get(u,**kwargs); print(i,r2.url,r2.status_code,len(r2.content),r2.text[:80] if len(r2.content)<300 else '')
+ os.makedirs('data',exist_ok=True);open(f'data/try{i}','wb').write(r2.content)
+for i,url in enumerate(['mgChooseDocPack.aspx?ID=8249','mgChooseDocPack.aspx?ID=8320']):
+ rr=s.get(urljoin(base,url)); print('packpage',i,rr.status_code,len(rr.content),rr.url)
+ open(f'data/choose{i}.html','wb').write(rr.content)
